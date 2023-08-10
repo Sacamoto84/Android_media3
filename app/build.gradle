@@ -1,0 +1,136 @@
+plugins {
+    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.kotlinAndroid)
+}
+
+android {
+    namespace 'com.example.media3'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.example.media3"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary true
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    buildFeatures {
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.4.3'
+    }
+    packaging {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+}
+
+dependencies {
+
+    implementation libs.core.ktx
+    implementation libs.lifecycle.runtime.ktx
+    implementation libs.activity.compose
+    implementation platform(libs.compose.bom)
+    implementation libs.ui
+    implementation libs.ui.graphics
+    implementation libs.ui.tooling.preview
+    implementation libs.material3
+    testImplementation libs.junit
+    androidTestImplementation libs.androidx.test.ext.junit
+    androidTestImplementation libs.espresso.core
+    androidTestImplementation platform(libs.compose.bom)
+    androidTestImplementation libs.ui.test.junit4
+    debugImplementation libs.ui.tooling
+    debugImplementation libs.ui.test.manifest
+
+
+
+    def media3_version = "1.1.0"
+
+    // For media playback using ExoPlayer
+    implementation "androidx.media3:media3-exoplayer:$media3_version"
+
+    // For DASH playback support with ExoPlayer
+    implementation "androidx.media3:media3-exoplayer-dash:$media3_version"
+    // For HLS playback support with ExoPlayer
+    implementation "androidx.media3:media3-exoplayer-hls:$media3_version"
+    // For RTSP playback support with ExoPlayer
+    implementation "androidx.media3:media3-exoplayer-rtsp:$media3_version"
+    // For ad insertion using the Interactive Media Ads SDK with ExoPlayer
+    implementation "androidx.media3:media3-exoplayer-ima:$media3_version"
+
+    // For loading data using the Cronet network stack
+    implementation "androidx.media3:media3-datasource-cronet:$media3_version"
+    // For loading data using the OkHttp network stack
+    implementation "androidx.media3:media3-datasource-okhttp:$media3_version"
+    // For loading data using librtmp
+    implementation "androidx.media3:media3-datasource-rtmp:$media3_version"
+
+    // For building media playback UIs
+    implementation "androidx.media3:media3-ui:$media3_version"
+    // For building media playback UIs for Android TV using the Jetpack Leanback library
+    implementation "androidx.media3:media3-ui-leanback:$media3_version"
+
+    // For exposing and controlling media sessions
+    implementation "androidx.media3:media3-session:$media3_version"
+
+    // For extracting data from media containers
+    implementation "androidx.media3:media3-extractor:$media3_version"
+
+    // For integrating with Cast
+    implementation "androidx.media3:media3-cast:$media3_version"
+
+    // For scheduling background operations using Jetpack Work's WorkManager with ExoPlayer
+    implementation "androidx.media3:media3-exoplayer-workmanager:$media3_version"
+
+    // For transforming media files
+    implementation "androidx.media3:media3-transformer:$media3_version"
+
+    // Utilities for testing media components (including ExoPlayer components)
+    implementation "androidx.media3:media3-test-utils:$media3_version"
+    // Utilities for testing media components (including ExoPlayer components) via Robolectric
+    implementation "androidx.media3:media3-test-utils-robolectric:$media3_version"
+
+    // Common functionality for media database components
+    implementation "androidx.media3:media3-database:$media3_version"
+    // Common functionality for media decoders
+    implementation "androidx.media3:media3-decoder:$media3_version"
+    // Common functionality for loading data
+    implementation "androidx.media3:media3-datasource:$media3_version"
+    // Common functionality used across multiple media libraries
+    implementation "androidx.media3:media3-common:$media3_version"
+
+
+    // Library for FFT processing
+    implementation 'com.github.paramsen:noise:2.0.0'
+
+
+
+
+
+
+
+    //implementation "com.google.errorprone.error_prone_annotations:2.0.12"
+
+}
