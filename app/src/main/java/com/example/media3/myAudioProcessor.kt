@@ -1,5 +1,9 @@
+import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.common.audio.AudioProcessor
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.experimental.and
 
 @androidx.media3.common.util.UnstableApi
 class myAudioProcessor : AudioProcessor {
@@ -21,38 +25,130 @@ class myAudioProcessor : AudioProcessor {
         private const val BUFFER_EXTRA_SIZE = SAMPLE_SIZE * 8
     }
 
+    private lateinit var inputAudioFormat :AudioProcessor.AudioFormat
+    private var isActive: Boolean = false
+    private var inputEnded: Boolean = false
+
+    private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
+    private var processBuffer = AudioProcessor.EMPTY_BUFFER
 
 
+
+    //inputAudioFormat.sampleRate, inputAudioFormat.channelCount, C.ENCODING_PCM_FLOAT)
+
+    // sampleRate= */ Format.NO_VALUE,
+    // channelCount= */ Format.NO_VALUE,
+    // encoding= */ Format.NO_VALUE);
+
+    //Настраиваем выходной формат на Float
     override fun configure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
-        TODO("Not yet implemented")
+
+        if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
+            throw AudioProcessor.UnhandledAudioFormatException(
+                inputAudioFormat
+            )
+        }
+
+
+        this.inputAudioFormat = inputAudioFormat
+        isActive = true
+
+//        return if (inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) AudioProcessor.AudioFormat(
+//            inputAudioFormat.sampleRate, inputAudioFormat.channelCount, C.ENCODING_PCM_FLOAT
+//        )
+//        else inputAudioFormat
+
+        return inputAudioFormat
+
     }
 
+    //Возвращает, настроен ли процессор и будет ли он обрабатывать входные буферы.
     override fun isActive(): Boolean {
-        TODO("Not yet implemented")
+        return isActive
     }
+
+
 
     override fun queueInput(inputBuffer: ByteBuffer) {
-        TODO("Not yet implemented")
+        var position = inputBuffer.position()
+        val limit = inputBuffer.limit()
+        val size = limit - position
+
+        val frameCount = (size) / (2 * inputAudioFormat.channelCount)
+
+        if (processBuffer.capacity() < size) {
+            processBuffer = ByteBuffer.allocateDirect(size).order(ByteOrder.nativeOrder())
+        } else {
+            processBuffer.clear()
+        }
+
+        while (position < limit) {
+
+            var summedUp = 0
+            for (channelIndex in 0 until inputAudioFormat.channelCount) {
+                val current = inputBuffer.getShort(position + 2 * channelIndex)
+                processBuffer.putShort(current)
+                summedUp += current
+            }
+
+            position += inputAudioFormat.channelCount * 2
+
+        }
+
+        inputBuffer.position(limit)
+
+        processBuffer.flip()
+        outputBuffer = this.processBuffer
+
     }
 
+
+
     override fun queueEndOfStream() {
-        TODO("Not yet implemented")
+        inputEnded = true
+        processBuffer = AudioProcessor.EMPTY_BUFFER
     }
 
     override fun getOutput(): ByteBuffer {
-        TODO("Not yet implemented")
+        val outputBuffer = this.outputBuffer
+        this.outputBuffer = AudioProcessor.EMPTY_BUFFER
+        return outputBuffer
     }
 
     override fun isEnded(): Boolean {
-        TODO("Not yet implemented")
+        return inputEnded && processBuffer === AudioProcessor.EMPTY_BUFFER
     }
 
     override fun flush() {
-        TODO("Not yet implemented")
+        outputBuffer = AudioProcessor.EMPTY_BUFFER
+        inputEnded = false
+        // A new stream is incoming.
     }
 
+    //Сбрасывает процессор в его ненастроенное состояние, освобождая все ресурсы.
     override fun reset() {
-        TODO("Not yet implemented")
+        flush()
+        processBuffer = AudioProcessor.EMPTY_BUFFER
+        inputAudioFormat = AudioProcessor.AudioFormat(Format.NO_VALUE,Format.NO_VALUE,Format.NO_VALUE)
+    }
+
+
+    private val FLOAT_NAN_AS_INT = java.lang.Float.floatToIntBits(Float.NaN)
+    private val PCM_32_BIT_INT_TO_PCM_32_BIT_FLOAT_FACTOR = 1.0 / 0x7FFFFFFF
+
+    /**
+     * Converts the provided 32-bit integer to a 32-bit float value and writes it to `buffer`.
+     *
+     * @param pcm32BitInt The 32-bit integer value to convert to 32-bit float in [-1.0, 1.0].
+     * @param buffer The output buffer.
+     */
+    private fun writePcm32BitFloat(pcm32BitInt: Int, buffer: ByteBuffer) {
+        val pcm32BitFloat = (PCM_32_BIT_INT_TO_PCM_32_BIT_FLOAT_FACTOR * pcm32BitInt).toFloat()
+        var floatBits = java.lang.Float.floatToIntBits(pcm32BitFloat)
+        if (floatBits == FLOAT_NAN_AS_INT) {
+            floatBits = java.lang.Float.floatToIntBits(0.0.toFloat())
+        }
+        buffer.putInt(floatBits)
     }
 
 }
