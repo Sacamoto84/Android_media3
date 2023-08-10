@@ -1,6 +1,8 @@
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.common.audio.AudioProcessor
+import com.example.media3.enL
+import com.example.media3.enR
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.experimental.and
@@ -25,13 +27,12 @@ class myAudioProcessor : AudioProcessor {
         private const val BUFFER_EXTRA_SIZE = SAMPLE_SIZE * 8
     }
 
-    private lateinit var inputAudioFormat :AudioProcessor.AudioFormat
+    private lateinit var inputAudioFormat: AudioProcessor.AudioFormat
     private var isActive: Boolean = false
     private var inputEnded: Boolean = false
 
     private var outputBuffer: ByteBuffer = AudioProcessor.EMPTY_BUFFER
     private var processBuffer = AudioProcessor.EMPTY_BUFFER
-
 
 
     //inputAudioFormat.sampleRate, inputAudioFormat.channelCount, C.ENCODING_PCM_FLOAT)
@@ -43,6 +44,9 @@ class myAudioProcessor : AudioProcessor {
     //Настраиваем выходной формат на Float
     override fun configure(inputAudioFormat: AudioProcessor.AudioFormat): AudioProcessor.AudioFormat {
 
+        println("Audio Processor: $inputAudioFormat")
+
+
         if (inputAudioFormat.encoding != C.ENCODING_PCM_16BIT) {
             throw AudioProcessor.UnhandledAudioFormatException(
                 inputAudioFormat
@@ -53,13 +57,14 @@ class myAudioProcessor : AudioProcessor {
         this.inputAudioFormat = inputAudioFormat
         isActive = true
 
-//        return if (inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) AudioProcessor.AudioFormat(
-//            inputAudioFormat.sampleRate, inputAudioFormat.channelCount, C.ENCODING_PCM_FLOAT
-//        )
-//        else inputAudioFormat
+        //        return if (inputAudioFormat.encoding != C.ENCODING_PCM_FLOAT) AudioProcessor.AudioFormat(
+        //            inputAudioFormat.sampleRate, inputAudioFormat.channelCount, C.ENCODING_PCM_FLOAT
+        //        )
+        //        else inputAudioFormat
 
-        return inputAudioFormat
-
+        return AudioProcessor.AudioFormat(
+            inputAudioFormat.sampleRate, 2, C.ENCODING_PCM_16BIT
+        )
     }
 
     //Возвращает, настроен ли процессор и будет ли он обрабатывать входные буферы.
@@ -68,13 +73,20 @@ class myAudioProcessor : AudioProcessor {
     }
 
 
-
     override fun queueInput(inputBuffer: ByteBuffer) {
+
+        val enl = enL.value
+        val enr = enR.value
+
         var position = inputBuffer.position()
         val limit = inputBuffer.limit()
-        val size = limit - position
+        var size = limit - position
 
-        val frameCount = (size) / (2 * inputAudioFormat.channelCount)
+        val channelCount = inputAudioFormat.channelCount
+
+        //val frameCount = (size) / (2 * inputAudioFormat.channelCount)
+
+        if (channelCount == 1) size *= 2
 
         if (processBuffer.capacity() < size) {
             processBuffer = ByteBuffer.allocateDirect(size).order(ByteOrder.nativeOrder())
@@ -84,14 +96,28 @@ class myAudioProcessor : AudioProcessor {
 
         while (position < limit) {
 
-            var summedUp = 0
-            for (channelIndex in 0 until inputAudioFormat.channelCount) {
-                val current = inputBuffer.getShort(position + 2 * channelIndex)
-                processBuffer.putShort(current)
-                summedUp += current
+
+            if (channelCount == 2) {
+                for (channelIndex in 0 until channelCount) { //current = inputBuffer.getShort(position + 2 * channelIndex)
+
+                    val current: Short =
+                            if (channelIndex == 0) if (enr) inputBuffer.getShort(position) else 0
+                            else if (enl) inputBuffer.getShort(position + 2) else 0
+
+                    processBuffer.putShort(current)
+
+                }
+                position += channelCount * 2
             }
 
-            position += inputAudioFormat.channelCount * 2
+            if (channelCount == 1) {
+                val currentR: Short = if (enr) inputBuffer.getShort(position) else 0
+                val currentL: Short = if (enl) inputBuffer.getShort(position) else 0
+                processBuffer.putShort(currentR)
+                processBuffer.putShort(currentL)
+                position += 2
+            }
+
 
         }
 
@@ -101,7 +127,6 @@ class myAudioProcessor : AudioProcessor {
         outputBuffer = this.processBuffer
 
     }
-
 
 
     override fun queueEndOfStream() {
@@ -121,15 +146,15 @@ class myAudioProcessor : AudioProcessor {
 
     override fun flush() {
         outputBuffer = AudioProcessor.EMPTY_BUFFER
-        inputEnded = false
-        // A new stream is incoming.
+        inputEnded = false // A new stream is incoming.
     }
 
     //Сбрасывает процессор в его ненастроенное состояние, освобождая все ресурсы.
     override fun reset() {
         flush()
         processBuffer = AudioProcessor.EMPTY_BUFFER
-        inputAudioFormat = AudioProcessor.AudioFormat(Format.NO_VALUE,Format.NO_VALUE,Format.NO_VALUE)
+        inputAudioFormat =
+                AudioProcessor.AudioFormat(Format.NO_VALUE, Format.NO_VALUE, Format.NO_VALUE)
     }
 
 
